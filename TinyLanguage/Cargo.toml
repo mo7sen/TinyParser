@@ -1,0 +1,7 @@
+[package]
+name = "TinyLanguage"
+version = "0.1.0"
+authors = ["Robear Selwans <robear.selwans@outlook.com>"]
+edition = "2018"
+
+[dependencies]
