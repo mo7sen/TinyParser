@@ -2,12 +2,12 @@ mod lib;
 use lib::parse;
 
 fn main() {
-    println!("{:#?}", parse(
-        "read x;
+    parse(
+        "read{super cool} x; {cool}
 
-            if 0 < x then
+            if ((((0 < x)))) then
 
-            fact := 1;
+            fact := 1{really};
 
             repeat
 
@@ -19,6 +19,7 @@ fn main() {
 
             write fact
 
-            end "));
-
+            end ",
+    )
+    .print_dbg(String::new());
 }

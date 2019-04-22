@@ -1,8 +1,8 @@
-use std::iter::Peekable;
-use std::usize;
-use tiny_lexer::lexer::{tokenize, Token, Span};
-use std::slice::Iter;
 use std::cmp::{max, min};
+use std::iter::Peekable;
+use std::slice::Iter;
+use std::usize;
+use tiny_lexer::lexer::{tokenize, Span, Token};
 
 #[derive(Debug)]
 enum NodeType {
@@ -39,7 +39,6 @@ enum OpType {
     CompOp,
 }
 
-
 #[derive(Debug)]
 enum ErrorType {
     IllegalStmt,
@@ -57,21 +56,28 @@ pub struct Node {
 impl Node {
     fn new() -> Node {
         Node {
-            span: (usize::MAX,0),
+            span: (usize::MAX, 0),
             n_type: NodeType::Null,
-            children: vec![]
+            children: vec![],
         }
     }
 
-    fn add_child(&mut self, child: Node){
+    fn add_child(&mut self, child: Node) {
         self.span.0 = min(self.span.0, child.span.0);
         self.span.1 = max(self.span.1, child.span.1);
         self.children.push(child);
     }
+
+    pub fn print_dbg(&self, prefix: String) {
+        println!("{}Node: {:?}", prefix, self.n_type);
+        for node in &self.children {
+            node.print_dbg(String::from("\t") + prefix.as_str());
+        }
+    }
 }
 
-pub fn parse(src: &'static str) -> Node{
-    let mut tokens: Vec<Token> = tokenize(src);
+pub fn parse(src: &'static str) -> Node {
+    let tokens: Vec<Token> = tokenize(src, false);
     let mut root = Node::new();
     root.n_type = NodeType::Root;
     let mut peekable_toks = Box::new(tokens.iter()).peekable();
@@ -94,35 +100,34 @@ fn stmt_seq(token_iter: &mut Peekable<Box<Iter<Token>>>, parent_node: &mut Node,
 
     loop {
         //TODO: match ; symbol
-        if match_tok(token_iter.peek(), ";", src){
+        if match_tok(token_iter.peek(), ";", src) {
             token_iter.next();
             stmt(token_iter, &mut stmt_seq_node, src);
         } else {
             break;
         }
-
     }
 
     parent_node.add_child(stmt_seq_node);
 }
 
 fn stmt(token_iter: &mut Peekable<Box<Iter<Token>>>, parent_node: &mut Node, src: &str) {
-    if let Some(&token) = token_iter.peek(){
+    if let Some(&token) = token_iter.peek() {
         let mut stmt_node = Node::new();
         let stmt_type;
         match get_tok_content(token, src) {
             "if" => {
                 stmt_type = StmtType::IfStmt;
                 if_stmt(token_iter, &mut stmt_node, src);
-            },
+            }
             "repeat" => {
                 stmt_type = StmtType::RepeatStmt;
                 repeat_stmt(token_iter, &mut stmt_node, src);
-            },
+            }
             "read" => {
                 stmt_type = StmtType::ReadStmt;
                 read_stmt(token_iter, &mut stmt_node, src);
-            },
+            }
             "write" => {
                 stmt_type = StmtType::WriteStmt;
                 write_stmt(token_iter, &mut stmt_node, src);
@@ -257,11 +262,10 @@ fn write_stmt(token_iter: &mut Peekable<Box<Iter<Token>>>, parent_node: &mut Nod
     exp(token_iter, parent_node, src);
 }
 
-
 //==============Start Of: Ops==============
 fn add_op(token_iter: &mut Peekable<Box<Iter<Token>>>, parent_node: &mut Node, src: &str) {
     if token_iter.peek().is_some() {
-        if match_tok(token_iter.peek(), "+", src) || match_tok(token_iter.peek(), "-", src)  {
+        if match_tok(token_iter.peek(), "+", src) || match_tok(token_iter.peek(), "-", src) {
             let mut addop_node = Node::new();
             addop_node.n_type = NodeType::Op(OpType::AddOp);
             addop_node.span = token_iter.next().unwrap().get_span();
@@ -277,7 +281,7 @@ fn add_op(token_iter: &mut Peekable<Box<Iter<Token>>>, parent_node: &mut Node, s
 fn mulop(token_iter: &mut Peekable<Box<Iter<Token>>>, parent_node: &mut Node, src: &str) {
     //TODO: Match * or /
     if token_iter.peek().is_some() {
-        if match_tok(token_iter.peek(), "*", src) || match_tok(token_iter.peek(), "/", src)  {
+        if match_tok(token_iter.peek(), "*", src) || match_tok(token_iter.peek(), "/", src) {
             let mut mulop_node = Node::new();
             mulop_node.n_type = NodeType::Op(OpType::MulOp);
             mulop_node.span = token_iter.next().unwrap().get_span();
@@ -291,9 +295,8 @@ fn mulop(token_iter: &mut Peekable<Box<Iter<Token>>>, parent_node: &mut Node, sr
 }
 
 fn comp_op(token_iter: &mut Peekable<Box<Iter<Token>>>, parent_node: &mut Node, src: &str) {
-    //TODO: Match < or =
     if token_iter.peek().is_some() {
-        if match_tok(token_iter.peek(), "<", src) || match_tok(token_iter.peek(), "=", src)  {
+        if match_tok(token_iter.peek(), "<", src) || match_tok(token_iter.peek(), "=", src) {
             let mut compop_node = Node::new();
             compop_node.n_type = NodeType::Op(OpType::CompOp);
             compop_node.span = token_iter.next().unwrap().get_span();
@@ -314,7 +317,7 @@ fn exp(token_iter: &mut Peekable<Box<Iter<Token>>>, parent_node: &mut Node, src:
     simple_exp(token_iter, &mut exp_node, src);
     //Optional part starts here
     loop {
-        if match_tok(token_iter.peek(), "<", src) || match_tok(token_iter.peek(), "=",src){
+        if match_tok(token_iter.peek(), "<", src) || match_tok(token_iter.peek(), "=", src) {
             comp_op(token_iter, &mut exp_node, src);
             simple_exp(token_iter, &mut exp_node, src);
         } else {
@@ -324,7 +327,6 @@ fn exp(token_iter: &mut Peekable<Box<Iter<Token>>>, parent_node: &mut Node, src:
     parent_node.add_child(exp_node);
 }
 
-
 fn simple_exp(token_iter: &mut Peekable<Box<Iter<Token>>>, parent_node: &mut Node, src: &str) {
     let mut sexp_node = Node::new();
     sexp_node.n_type = NodeType::SimplExp;
@@ -332,7 +334,7 @@ fn simple_exp(token_iter: &mut Peekable<Box<Iter<Token>>>, parent_node: &mut Nod
     term(token_iter, &mut sexp_node, src);
 
     loop {
-        if match_tok(token_iter.peek(), "+", src) || match_tok(token_iter.peek(), "-",src) {
+        if match_tok(token_iter.peek(), "+", src) || match_tok(token_iter.peek(), "-", src) {
             add_op(token_iter, &mut sexp_node, src);
             term(token_iter, &mut sexp_node, src);
         } else {
@@ -342,8 +344,6 @@ fn simple_exp(token_iter: &mut Peekable<Box<Iter<Token>>>, parent_node: &mut Nod
     parent_node.add_child(sexp_node);
 }
 
-
-
 fn term(token_iter: &mut Peekable<Box<Iter<Token>>>, parent_node: &mut Node, src: &str) {
     let mut term_node = Node::new();
     term_node.n_type = NodeType::Term;
@@ -351,7 +351,7 @@ fn term(token_iter: &mut Peekable<Box<Iter<Token>>>, parent_node: &mut Node, src
     factor(token_iter, &mut term_node, src);
 
     loop {
-        if match_tok(token_iter.peek(), "*", src) || match_tok(token_iter.peek(), "/",src) {
+        if match_tok(token_iter.peek(), "*", src) || match_tok(token_iter.peek(), "/", src) {
             mulop(token_iter, &mut term_node, src);
             factor(token_iter, &mut term_node, src);
         } else {
@@ -361,34 +361,40 @@ fn term(token_iter: &mut Peekable<Box<Iter<Token>>>, parent_node: &mut Node, src
     parent_node.add_child(term_node);
 }
 
-
 fn factor(token_iter: &mut Peekable<Box<Iter<Token>>>, parent_node: &mut Node, src: &str) {
     let mut factor_node = Node::new();
     factor_node.n_type = NodeType::Factor;
 
-//    //TODO: Match (
-//    exp();
-//    //TODO: Match )
-    //OR
-
     match token_iter.peek().unwrap() {
+        //TODO: Handle None
         Token::NUMBER(_) => {
             number(token_iter, &mut factor_node, src);
-        },
+        }
         Token::IDENTIFIER(_) => {
             identifier(token_iter, &mut factor_node, src);
-        },
+        }
+        Token::SYMBOL(_) => {
+            if match_tok(token_iter.peek(), "(", src) {
+                token_iter.next();
+                exp(token_iter, &mut factor_node, src);
+                if match_tok(token_iter.peek(), ")", src) {
+                    token_iter.next();
+                } else {
+                    //TODO: MissingBracket
+                }
+            } else {
+                //TODO: IllegalFactor
+            }
+        }
         _ => {
             //TODO: IllegalFactor
-        },
+        }
     }
 
     parent_node.add_child(factor_node);
-    //OR
-
 }
 
-fn number(token_iter: &mut Peekable<Box<Iter<Token>>>, parent_node: &mut Node, src: &str) {
+fn number(token_iter: &mut Peekable<Box<Iter<Token>>>, parent_node: &mut Node, _src: &str) {
     let mut number_node = Node::new();
     number_node.n_type = NodeType::Number;
     number_node.span = token_iter.peek().unwrap().get_span();
@@ -396,7 +402,7 @@ fn number(token_iter: &mut Peekable<Box<Iter<Token>>>, parent_node: &mut Node, s
     parent_node.add_child(number_node);
 }
 
-fn identifier(token_iter: &mut Peekable<Box<Iter<Token>>>, parent_node: &mut Node, src: &str) {
+fn identifier(token_iter: &mut Peekable<Box<Iter<Token>>>, parent_node: &mut Node, _src: &str) {
     let mut id_node = Node::new();
     id_node.n_type = NodeType::Identifier;
     id_node.span = token_iter.peek().unwrap().get_span();
@@ -404,7 +410,7 @@ fn identifier(token_iter: &mut Peekable<Box<Iter<Token>>>, parent_node: &mut Nod
     parent_node.add_child(id_node);
 }
 
-fn match_tok (opt_tok: Option<&&Token>, res: &str, src: &str) -> bool {
+fn match_tok(opt_tok: Option<&&Token>, res: &str, src: &str) -> bool {
     if let Some(tok) = opt_tok {
         if get_tok_content(tok, src) == res {
             return true;
@@ -415,14 +421,12 @@ fn match_tok (opt_tok: Option<&&Token>, res: &str, src: &str) -> bool {
     }
 }
 
-fn get_tok_content<'a>(tok: &Token, src: &'a str) -> &'a str{
+fn get_tok_content<'a>(tok: &Token, src: &'a str) -> &'a str {
     match *tok {
-        Token::RESERVED((i0, i1)) |
-        Token::IDENTIFIER((i0, i1)) |
-        Token::NUMBER((i0, i1)) |
-        Token::COMMENT((i0, i1)) |
-        Token::SYMBOL((i0, i1)) => {
-            &src[i0..i1]
-        },
+        Token::RESERVED((i0, i1))
+        | Token::IDENTIFIER((i0, i1))
+        | Token::NUMBER((i0, i1))
+        | Token::COMMENT((i0, i1))
+        | Token::SYMBOL((i0, i1)) => &src[i0..i1],
     }
 }
