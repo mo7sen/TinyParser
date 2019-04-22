@@ -1,6 +1,3 @@
-use std::fs; 
-use std::i64;
-
 #[derive(Copy, Clone, Debug)]
 enum State {
     START,
@@ -20,20 +17,37 @@ enum TokenType {
 
 #[derive(Debug)]
 pub enum Token {
-    RESERVED(String),
-    IDENTIFIER(String),
-    NUMBER(i64),
-    COMMENT(String),
-    SYMBOL(String),
+    RESERVED(Span),
+    IDENTIFIER(Span),
+    NUMBER(Span),
+    COMMENT(Span),
+    SYMBOL(Span),
 }
 
-pub fn tokenize<'a>(file_name: &'a str) -> Vec<Token> {
-    let file_contents = read_file(file_name);
+impl Token {
+    pub fn get_span(&self) -> Span{
+        match self {
+            Token::RESERVED(span) |
+            Token::IDENTIFIER(span) |
+            Token::NUMBER(span) |
+            Token::COMMENT(span) |
+            Token::SYMBOL(span) => {
+                *span
+            },
+        }
+    }
+}
+
+pub type Span = (usize, usize);
+
+pub fn tokenize<'a>(file_contents: &'a str) -> Vec<Token> {
+
+    //Need a hotfix for the ' '
     let mut char_iter = file_contents.chars();
     let mut curr_char = char_iter.next();
     let mut curr_state = State::START;
-    let mut tokens: Vec<Token> = Vec::new(); 
-    let mut curr_val = String::new();
+    let mut tokens: Vec<Token> = Vec::new();
+    let (mut curr_index, mut curr_offset) = (0,1);
 
     while curr_char.is_some() {
         let c = curr_char.unwrap();
@@ -41,70 +55,81 @@ pub fn tokenize<'a>(file_name: &'a str) -> Vec<Token> {
             State::START=> {
                if c.is_ascii_whitespace(){
                    curr_char = char_iter.next();
+                   curr_index += c.len_utf8();
+                   curr_offset += c.len_utf8();
                } else if c == '{' {
                     curr_state = State::INCOMMENT;
                     curr_char = char_iter.next();
-		    add_token("{", TokenType::SYMBOL, &mut tokens);
+		            add_token((curr_index, curr_offset), TokenType::SYMBOL, &mut tokens);
+                    curr_index += c.len_utf8();
                } else if c.is_alphabetic() {
                     curr_state = State::INID;
-                    curr_val += &c.to_string();
                     curr_char = char_iter.next();
                } else if c.is_digit(10) {
                     curr_state = State::INNUM;
-                    curr_val += &c.to_string();
                     curr_char = char_iter.next();
                } else if c == ':' {
                     curr_state = State::INASSIGN;
-                    curr_val += &c.to_string();
                     curr_char = char_iter.next();
                } else {
-                    add_token(&c.to_string(), TokenType::SYMBOL, &mut tokens);
+                    add_token((curr_index, curr_offset), TokenType::SYMBOL, &mut tokens);
+                    curr_index = curr_offset;
+                    curr_offset += c.len_utf8();
                     curr_char = char_iter.next();
                }
             },
             State::INCOMMENT=> {
                if c == '}' {
-                    add_token(&curr_val.clone(), TokenType::COMMENT, &mut tokens);
-                    add_token("}", TokenType::SYMBOL, &mut tokens);
-                    curr_val.clear();
+                    add_token((curr_index, curr_offset), TokenType::COMMENT, &mut tokens);
+                    curr_index = curr_offset;
+                    curr_offset += c.len_utf8();
+                    add_token((curr_index, curr_offset), TokenType::SYMBOL, &mut tokens);
+
                     curr_state = State::START;
                     curr_char = char_iter.next();
+                    curr_index = curr_offset;
+                    curr_offset += c.len_utf8();
                } else {
-                    curr_val += &c.to_string();
+                    curr_offset += c.len_utf8();
                     curr_char = char_iter.next();
                     curr_state = State::INCOMMENT;
                }
             },
             State::INNUM=> {
                if c.is_digit(10) {
-                   curr_val += &c.to_string();
+                   curr_offset += c.len_utf8();
                    curr_char = char_iter.next();
                } else {
-                   add_token(&curr_val.clone(), TokenType::NUMBER, &mut tokens);
-                   curr_val.clear();
+                   add_token((curr_index, curr_offset), TokenType::NUMBER, &mut tokens);
+                   curr_index = curr_offset;
+                   curr_offset += c.len_utf8();
                    curr_state = State::START;
                }
             },
             State::INID=> {
                 if c.is_alphabetic() {
-                    curr_val += &c.to_string();
+                    curr_offset += c.len_utf8();
                     curr_char = char_iter.next();
                 } else {
-                    add_token(&curr_val.clone(), get_token_type(&curr_val), &mut tokens);
-                    curr_val.clear();
+                    add_token((curr_index, curr_offset), get_token_type((curr_index, curr_offset), file_contents), &mut tokens);
+                    curr_index = curr_offset;
+                    curr_offset += c.len_utf8();
                     curr_state = State::START;
                 }
             },
             State::INASSIGN=> {
                 if c == '=' {
-                    curr_val += &c.to_string();
-                    add_token(&curr_val.clone(), TokenType::SYMBOL, &mut tokens);
-                    curr_val.clear();
+                    curr_offset += c.len_utf8();
+                    add_token((curr_index, curr_offset), TokenType::SYMBOL, &mut tokens);
+
+                    curr_index = curr_offset;
+                    curr_offset += c.len_utf8();
                     curr_char = char_iter.next();
                     curr_state = State::START;
                 } else {
-                    add_token(&curr_val.clone(), TokenType::SYMBOL, &mut tokens);
-                    curr_val.clear();
+                    add_token((curr_index, curr_offset), TokenType::SYMBOL, &mut tokens);
+                    curr_index = curr_offset;
+                    curr_offset += c.len_utf8();
                     curr_state = State::START;
                 }
             },
@@ -113,20 +138,8 @@ pub fn tokenize<'a>(file_name: &'a str) -> Vec<Token> {
     tokens
 }
 
-use std::path::Path;
-use std::env::current_exe;
-
-fn read_file<'a>(file_name: &'a str) -> String {
-    let err_mess: String = String::from("Trouble reading the file");
-    let mut path = current_exe().unwrap();
-    path.pop();
-    path.push(Path::new(file_name));
-    fs::read_to_string(file_name)
-        .expect(err_mess.as_str())
-}
-
-fn get_token_type(id: &str) -> TokenType {
-    match id {
+fn get_token_type(span: Span, src: &str) -> TokenType {
+    match &src[span.0..span.1] {
         "if"    |
         "then"  |
         "else"  |
@@ -139,12 +152,12 @@ fn get_token_type(id: &str) -> TokenType {
     }
 }
 
-fn add_token<'a>(val: &'a str, tok_type: TokenType, tokens: &mut Vec<Token>) {
+fn add_token<'a>(val: Span, tok_type: TokenType, tokens: &mut Vec<Token>) {
     match tok_type {
-        TokenType::RESERVED => {tokens.push(Token::RESERVED(String::from(val)));},
-        TokenType::NUMBER => {tokens.push(Token::NUMBER(i64::from_str_radix(val, 10).unwrap()));},
-        TokenType::SYMBOL => {tokens.push(Token::SYMBOL(String::from(val)));},
-        TokenType::IDENTIFIER => {tokens.push(Token::IDENTIFIER(String::from(val)));},
-        TokenType::COMMENT => {tokens.push(Token::COMMENT(String::from(val)));},
+        TokenType::RESERVED => {tokens.push(Token::RESERVED(val));},
+        TokenType::NUMBER => {tokens.push(Token::NUMBER(val));},
+        TokenType::SYMBOL => {tokens.push(Token::SYMBOL(val));},
+        TokenType::IDENTIFIER => {tokens.push(Token::IDENTIFIER(val));},
+        TokenType::COMMENT => {tokens.push(Token::COMMENT(val));},
     }
 }

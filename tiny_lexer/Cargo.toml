@@ -1,5 +1,5 @@
 [package]
-name = "TinyLanguage"
+name = "tiny_lexer"
 version = "0.1.0"
 authors = ["Robear Selwans <robear.selwans@outlook.com>"]
 edition = "2018"

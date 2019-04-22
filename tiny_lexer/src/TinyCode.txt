@@ -1,8 +1,8 @@
-{ Sample program in TINY language – computes factorial }
+{ Sample program in TINY language ﬣﬣﬣ computes factorial }
 
 read x; {input an integer }
 
-if 0 < x then { don’t compute if x <= 0 }
+if 0 < x then { don?t compute if x <= 0 }
 
 fact := 1;
 

@@ -5,3 +5,4 @@ authors = ["Robear Selwans <robear.selwans@outlook.com>"]
 edition = "2018"
 
 [dependencies]
+tiny_lexer = { path = "../tiny_lexer" }
