@@ -1,2 +1,8 @@
 /target
 **/*.rs.bk
+/node_modules/*
+**/node_modules/
+node_modules/
+TinyParserRust/TinyParser/src/electron-app/node_modules/*
+TinyParserRust/TinyParser/src/electron-app/node_modules/
+TinyParserRust/TinyParser/src/electron-app/node_modules
