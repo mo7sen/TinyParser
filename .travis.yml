@@ -1,0 +1,13 @@
+language: rust
+rvm:
+  - stable
+
+
+before_script:
+  - rustup component add rustfmt
+
+script:
+  - cargo build --verbose --all
+  - cargo fmt --all -- --check
+  - cargo run --bin tiny_lexer
+  - cargo run --bin tiny_parser

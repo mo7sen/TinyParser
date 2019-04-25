@@ -1,7 +1,9 @@
 [package]
-name = "TinyLanguage"
+name = "tiny_parser"
 version = "0.1.0"
 authors = ["Robear Selwans <robear.selwans@outlook.com>"]
 edition = "2018"
 
 [dependencies]
+tiny_lexer = { path = "../tiny_lexer" }
+json = "0.11.13"
