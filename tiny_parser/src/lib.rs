@@ -32,6 +32,7 @@ pub enum StmtType {
     WriteStmt,
     ReadStmt,
     AssignStmt,
+    Illegal,
 }
 
 #[derive(Debug, Clone)]
@@ -148,9 +149,10 @@ fn stmt<'a>(
     src: &'a str,
     simplified: bool,
 ) {
+    let mut stmt_node = Node::new();
+    let mut err = false;
     if let Some(&token) = token_iter.peek() {
-        let mut stmt_node = Node::new();
-        let stmt_type;
+        let mut stmt_type = StmtType::Illegal;
         match get_tok_content(token, src) {
             "if" => {
                 stmt_type = StmtType::IfStmt;
@@ -169,15 +171,22 @@ fn stmt<'a>(
                 write_stmt(token_iter, &mut stmt_node, src, simplified);
             }
             _ => {
-                stmt_type = StmtType::AssignStmt;
-                assign_stmt(token_iter, &mut stmt_node, src, simplified);
+                if let Token::IDENTIFIER(_) = token {
+                    stmt_type = StmtType::AssignStmt;
+                    assign_stmt(token_iter, &mut stmt_node, src, simplified);
+                } else {
+                    err = true;
+                    add_error(parent_node, ErrorType::IllegalStmt, "Illegal Statement Error:\nExpected one of {'if', 'read', 'write', 'repeat', Identifier}. Found: '".to_string() + get_tok_content(token, src) + "'\nSuggested Fix:\tCheck if you have a semicolon(';') after your last statement.")
+                }
             }
         }
-        stmt_node.n_type = NodeType::Stmt(stmt_type);
-        stmt_node.value = stmt_node.get_content(src);
-        parent_node.add_child(stmt_node);
+        if !err {
+            stmt_node.n_type = NodeType::Stmt(stmt_type);
+            stmt_node.value = stmt_node.get_content(src);
+            parent_node.add_child(stmt_node);
+        }
     } else {
-        //TODO: IllglStmt Error: Check if the file is empty, if not kindly remove the semicolon from the last stmt
+        add_error(parent_node, ErrorType::IllegalStmt, "Illegal Statement Error:\nSuggested Fix:\tCheck if you have a semicolon(';') after your last statement.".to_string());
     }
 }
 
@@ -211,10 +220,10 @@ fn if_stmt<'a>(
                 token_iter.next();
             }
         } else {
-            //TODO: MissingThen
+            add_error(parent_node, ErrorType::MissingThenKeyword, "IllegalIfStatementSyntax:\nExpected 'then' after the `if exp ->...<- stmtseq end`. Found: '".to_string() + get_tok_content(token_iter.peek().unwrap(), src) + "'\nSuggested Fix:\tAdd the missing 'then' keyword.");
         }
     } else {
-        //TODO: UnexpectedEOF
+        add_error(parent_node, ErrorType::UnexpectedEOF, "Unexpected EOF:\nExpected 'then' after the `if exp ->...<- stmtseq end`. Found: Early EOF".to_string());
     }
 
     stmt_seq(token_iter, parent_node, src, simplified);
@@ -235,8 +244,6 @@ fn if_stmt<'a>(
 
             stmt_seq(token_iter, parent_node, src, simplified);
         }
-    } else {
-        //TODO: UnexpectedEOF
     }
 
     if token_iter.peek().is_some() {
@@ -251,10 +258,10 @@ fn if_stmt<'a>(
                 token_iter.next();
             }
         } else {
-            //TODO: NonEndedIfStmt
+            add_error(parent_node, ErrorType::NonEndedIfStmt, "NonEndedIfStmt: All If Statements should be ended with the 'end'.\n\tSuggested Fix:\tAdd 'end' in its respective place.".to_string());
         }
     } else {
-        //TODO: UnexpectedEOF
+        add_error(parent_node, ErrorType::UnexpectedEOF, "Unexpected EOF:\nExpected 'end' keyword to close the If Statement, Found: Early EOF\nSuggested Fix:\tAdd 'end' in its respective place.".to_string());
     }
 }
 
@@ -288,10 +295,10 @@ fn repeat_stmt<'a>(
                 token_iter.next();
             }
         } else {
-            //TODO: MissingUntilRepeatStmt
+            add_error(parent_node, ErrorType::MissingUntilKeyword, "IllegalRepeatStatementSyntax:\nExpected 'until' at `repeat stmtseq ->....<- exp`. Found: '".to_string() + get_tok_content(token_iter.peek().unwrap(), src) + "'\nSuggested Fix:\tAdd the missing 'until' keyword.");
         }
     } else {
-        //TODO: UnexpectedEOF
+        add_error(parent_node, ErrorType::UnexpectedEOF, "Unexpected EOF:\nExpected 'until' at `repeat stmtseq ->....<- exp, Found: Early EOF\nSuggested Fix:\tAdd 'until' at its respective place.".to_string());
     }
 
     exp(token_iter, parent_node, src, simplified);
@@ -317,10 +324,10 @@ fn assign_stmt<'a>(
                 token_iter.next();
             }
         } else {
-            //TODO: MissingAssOperator
+            add_error(parent_node, ErrorType::MissingAssignOp, "IllegalAssignmentSyntax:\nExpected AssignmentOperator ':=' at `identifier ->....<- exp`. Found: '".to_string() + get_tok_content(token_iter.peek().unwrap(), src) + "'\nSuggested Fix:\tAdd the missing ':=' keyword.");
         }
     } else {
-        //TODO: UnexpectedEOF
+        add_error(parent_node, ErrorType::UnexpectedEOF, "Unexpected EOF:\nExpected AssignmentOperator ':=' at `identifier ->....<- exp`, Found: Early EOF\nSuggested Fix:\tRemove the dangling identifier at the end of the statement sequence.".to_string());
     }
 
     exp(token_iter, parent_node, src, simplified);
@@ -341,8 +348,15 @@ fn read_stmt<'a>(
     } else {
         token_iter.next();
     }
-
-    identifier(token_iter, parent_node, src);
+    if let Some(token) = token_iter.peek(){
+        if let Token::IDENTIFIER(_) = token{
+            identifier(token_iter, parent_node, src);
+        } else {
+            //TODO: ExpectedIdentifier
+        }
+    } else {
+        //TODO:UnexpectedEOF
+    }
 }
 
 fn write_stmt<'a>(
@@ -360,8 +374,11 @@ fn write_stmt<'a>(
     } else {
         token_iter.next();
     }
-
-    exp(token_iter, parent_node, src, simplified);
+    if let Some(_) = token_iter.peek(){
+        exp(token_iter, parent_node, src, simplified);
+    } else {
+        //TODO: UnexpectedEOF: Expected expression after the 'write' keyword
+    }
 }
 
 //==============Start Of: Ops==============
@@ -398,7 +415,6 @@ fn mulop<'a>(
     src: &'a str,
     simplified: bool,
 ) {
-    //TODO: Match * or /
     if token_iter.peek().is_some() {
         if match_tok(token_iter.peek(), "*", src) || match_tok(token_iter.peek(), "/", src) {
             if !simplified {
@@ -608,7 +624,7 @@ fn factor<'a>(
             }
         }
     } else {
-        //TODO: ExpectedFactor
+        //TODO: UnexpectedEOF
     }
 
     if !simplified {

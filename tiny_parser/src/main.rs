@@ -21,7 +21,7 @@ fn main() {
 
             until x = 0;
 
-            write fact
+            write fact;
 
             end ";
     let simplified = true;
