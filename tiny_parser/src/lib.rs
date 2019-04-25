@@ -93,7 +93,7 @@ impl<'a> Node<'a> {
         &src[self.span.0..self.span.1]
     }
 
-    fn reduce(&self) -> Node<'a>{
+    fn reduce(&self) -> Node<'a> {
         self.children.get(0).unwrap().clone()
     }
 }
@@ -348,8 +348,8 @@ fn read_stmt<'a>(
     } else {
         token_iter.next();
     }
-    if let Some(token) = token_iter.peek(){
-        if let Token::IDENTIFIER(_) = token{
+    if let Some(token) = token_iter.peek() {
+        if let Token::IDENTIFIER(_) = token {
             identifier(token_iter, parent_node, src);
         } else {
             //TODO: ExpectedIdentifier
@@ -374,7 +374,7 @@ fn write_stmt<'a>(
     } else {
         token_iter.next();
     }
-    if let Some(_) = token_iter.peek(){
+    if let Some(_) = token_iter.peek() {
         exp(token_iter, parent_node, src, simplified);
     } else {
         //TODO: UnexpectedEOF: Expected expression after the 'write' keyword
@@ -508,7 +508,7 @@ fn simple_exp<'a>(
     let mut sexp_node = Node::new();
     let mut opped = false;
 
-    if !simplified{
+    if !simplified {
         sexp_node.n_type = NodeType::SimplExp;
     }
 
@@ -524,12 +524,12 @@ fn simple_exp<'a>(
         }
     }
 
-    if !simplified{
+    if !simplified {
         sexp_node.value = sexp_node.get_content(src);
     }
     if !opped {
         parent_node.add_child(sexp_node.reduce());
-    }else {
+    } else {
         parent_node.add_child(sexp_node);
     }
 }
@@ -543,7 +543,7 @@ fn term<'a>(
     let mut term_node = Node::new();
     let mut opped = false;
 
-    if !simplified{
+    if !simplified {
         term_node.n_type = NodeType::Term;
     }
 
@@ -558,7 +558,7 @@ fn term<'a>(
             break;
         }
     }
-    if !simplified{
+    if !simplified {
         term_node.value = term_node.get_content(src);
     }
     if !opped {
@@ -580,14 +580,14 @@ fn factor<'a>(
     if let Some(tok) = token_iter.peek() {
         match tok {
             Token::NUMBER(_) => {
-                if !simplified{
+                if !simplified {
                     number(token_iter, &mut factor_node, src);
                 } else {
                     number(token_iter, parent_node, src);
                 }
             }
             Token::IDENTIFIER(_) => {
-                if !simplified{
+                if !simplified {
                     identifier(token_iter, &mut factor_node, src);
                 } else {
                     identifier(token_iter, parent_node, src);
@@ -595,7 +595,7 @@ fn factor<'a>(
             }
             Token::SYMBOL(_) => {
                 if match_tok(token_iter.peek(), "(", src) {
-                    if !simplified{
+                    if !simplified {
                         let mut open_brace_node = Node::new();
                         open_brace_node.n_type = NodeType::OpeningBrace;
                         open_brace_node.span = token_iter.next().unwrap().get_span();
