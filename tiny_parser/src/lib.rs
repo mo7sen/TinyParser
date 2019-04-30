@@ -18,7 +18,6 @@ pub enum NodeType {
     Number,
     Keyword,
     Error(ErrorType, String),
-    Root,
     Null,
     Symbol,
     OpeningBrace,
@@ -49,105 +48,96 @@ pub enum ErrorType {
     MissingThenKeyword,
     MissingUntilKeyword,
     MissingAssignOp,
-    MissingAddOp,
-    MissingMulOp,
-    MissingCmpOp,
     MissingClosingBracket,
     IllegalFactor,
     NonEndedIfStmt,
     ExpectedFactor,
+    ExpectedIdentifier,
 }
 
 #[derive(Debug, Clone)]
-pub struct Node<'a> {
+pub struct Node {
     pub span: Span,
     pub n_type: NodeType,
-    pub value: &'a str,
-    pub children: Vec<Node<'a>>,
+    pub nextstmt: Vec<Node>,
+    pub children: Vec<Node>,
 }
 
-impl<'a> Node<'a> {
-    fn new() -> Node<'a> {
+impl<'a> Node {
+    fn new() -> Node {
         Node {
             span: (usize::MAX, 0),
             n_type: NodeType::Null,
-            value: "",
+            nextstmt: vec![],
             children: vec![],
         }
     }
 
-    fn add_child(&mut self, child: Node<'a>) {
+    fn set_nextstmt(&mut self, next: Node){
+        self.nextstmt.push(next);
+    }
+
+    fn add_child(&mut self, child: Node) {
         self.span.0 = min(self.span.0, child.span.0);
         self.span.1 = max(self.span.1, child.span.1);
         self.children.push(child);
     }
 
-    pub fn print_dbg(&self, prefix: String) {
-        println!("{}{:?}: {}", prefix, self.n_type, self.value);
-        for node in &self.children {
-            node.print_dbg(String::from("\t") + prefix.as_str());
-        }
-    }
-
-    fn get_content(&self, src: &'a str) -> &'a str {
-        &src[self.span.0..self.span.1]
-    }
-
-    fn reduce(&self) -> Node<'a> {
+    fn reduce(&self) -> Node {
         self.children.get(0).unwrap().clone()
     }
 }
 
-pub fn parse<'a>(src: &'a str, simplified: bool) -> Node {
+pub fn parse(src: &str, simplified: bool) -> Node {
     let tokens: Vec<Token> = tokenize(src, false);
     let mut token_iter = Box::new(tokens.iter()).peekable();
-
     let mut program_node = Node::new();
     program_node.n_type = NodeType::Program;
     stmt_seq(&mut token_iter, &mut program_node, src, simplified);
-    program_node.value = program_node.get_content(src);
-
     program_node
 }
 
 fn stmt_seq<'a>(
     token_iter: &mut Peekable<Box<Iter<Token>>>,
-    parent_node: &mut Node<'a>,
+    parent_node: &mut Node,
     src: &'a str,
     simplified: bool,
 ) {
     let mut stmt_seq_node = Node::new();
     stmt_seq_node.n_type = NodeType::StmtSeq;
+    let mut next_parent_node = parent_node;
 
     if simplified {
-        stmt(token_iter, parent_node, src, simplified);
+        stmt(token_iter, next_parent_node, src, simplified, true);
+        next_parent_node = next_parent_node.children.last_mut().unwrap();
     } else {
-        stmt(token_iter, &mut stmt_seq_node, src, simplified);
+        stmt(token_iter, &mut stmt_seq_node, src, simplified, true);
     }
 
     loop {
         if match_tok(token_iter.peek(), ";", src) {
             token_iter.next();
             if simplified {
-                stmt(token_iter, parent_node, src, simplified);
+                stmt(token_iter, next_parent_node, src, simplified, false);
+                next_parent_node = next_parent_node.nextstmt.last_mut().unwrap();
             } else {
-                stmt(token_iter, &mut stmt_seq_node, src, simplified);
+                stmt(token_iter, &mut stmt_seq_node, src, simplified, true);
             }
         } else {
+            if !simplified {
+                next_parent_node.add_child(stmt_seq_node);
+            }
             break;
         }
-    }
-    if !simplified {
-        stmt_seq_node.value = stmt_seq_node.get_content(src);
-        parent_node.add_child(stmt_seq_node);
     }
 }
 
 fn stmt<'a>(
     token_iter: &mut Peekable<Box<Iter<Token>>>,
-    parent_node: &mut Node<'a>,
+    parent_node: &mut Node,
     src: &'a str,
     simplified: bool,
+    child: bool,
 ) {
     let mut stmt_node = Node::new();
     let mut err = false;
@@ -182,8 +172,11 @@ fn stmt<'a>(
         }
         if !err {
             stmt_node.n_type = NodeType::Stmt(stmt_type);
-            stmt_node.value = stmt_node.get_content(src);
-            parent_node.add_child(stmt_node);
+            if !child {
+                parent_node.set_nextstmt(stmt_node);
+            } else {
+                parent_node.add_child(stmt_node);
+            }
         }
     } else {
         add_error(parent_node, ErrorType::IllegalStmt, "Illegal Statement Error:\nSuggested Fix:\tCheck if you have a semicolon(';') after your last statement.".to_string());
@@ -192,7 +185,7 @@ fn stmt<'a>(
 
 fn if_stmt<'a>(
     token_iter: &mut Peekable<Box<Iter<Token>>>,
-    parent_node: &mut Node<'a>,
+    parent_node: &mut Node,
     src: &'a str,
     simplified: bool,
 ) {
@@ -200,7 +193,6 @@ fn if_stmt<'a>(
         let mut if_node = Node::new();
         if_node.n_type = NodeType::Keyword;
         if_node.span = token_iter.next().unwrap().get_span();
-        if_node.value = if_node.get_content(src);
         parent_node.add_child(if_node);
     } else {
         token_iter.next();
@@ -214,7 +206,6 @@ fn if_stmt<'a>(
                 let mut then_node = Node::new();
                 then_node.n_type = NodeType::Keyword;
                 then_node.span = token_iter.next().unwrap().get_span();
-                then_node.value = then_node.get_content(src);
                 parent_node.add_child(then_node);
             } else {
                 token_iter.next();
@@ -228,15 +219,12 @@ fn if_stmt<'a>(
 
     stmt_seq(token_iter, parent_node, src, simplified);
 
-    //Optional Part starts here
-
     if token_iter.peek().is_some() {
         if match_tok(token_iter.peek(), "else", src) {
             if !simplified {
                 let mut else_node = Node::new();
                 else_node.n_type = NodeType::Keyword;
                 else_node.span = token_iter.next().unwrap().get_span();
-                else_node.value = else_node.get_content(src);
                 parent_node.add_child(else_node);
             } else {
                 token_iter.next();
@@ -252,7 +240,6 @@ fn if_stmt<'a>(
                 let mut end_node = Node::new();
                 end_node.n_type = NodeType::Keyword;
                 end_node.span = token_iter.next().unwrap().get_span();
-                end_node.value = end_node.get_content(src);
                 parent_node.add_child(end_node);
             } else {
                 token_iter.next();
@@ -267,7 +254,7 @@ fn if_stmt<'a>(
 
 fn repeat_stmt<'a>(
     token_iter: &mut Peekable<Box<Iter<Token>>>,
-    parent_node: &mut Node<'a>,
+    parent_node: &mut Node,
     src: &'a str,
     simplified: bool,
 ) {
@@ -275,7 +262,6 @@ fn repeat_stmt<'a>(
         let mut repeat_node = Node::new();
         repeat_node.n_type = NodeType::Keyword;
         repeat_node.span = token_iter.next().unwrap().get_span();
-        repeat_node.value = repeat_node.get_content(src);
         parent_node.add_child(repeat_node);
     } else {
         token_iter.next();
@@ -289,7 +275,6 @@ fn repeat_stmt<'a>(
                 let mut until_node = Node::new();
                 until_node.n_type = NodeType::Keyword;
                 until_node.span = token_iter.next().unwrap().get_span();
-                until_node.value = until_node.get_content(src);
                 parent_node.add_child(until_node);
             } else {
                 token_iter.next();
@@ -300,13 +285,12 @@ fn repeat_stmt<'a>(
     } else {
         add_error(parent_node, ErrorType::UnexpectedEOF, "Unexpected EOF:\nExpected 'until' at `repeat stmtseq ->....<- exp, Found: Early EOF\nSuggested Fix:\tAdd 'until' at its respective place.".to_string());
     }
-
     exp(token_iter, parent_node, src, simplified);
 }
 
 fn assign_stmt<'a>(
     token_iter: &mut Peekable<Box<Iter<Token>>>,
-    parent_node: &mut Node<'a>,
+    parent_node: &mut Node,
     src: &'a str,
     simplified: bool,
 ) {
@@ -318,16 +302,15 @@ fn assign_stmt<'a>(
                 let mut ass_node = Node::new();
                 ass_node.n_type = NodeType::Symbol;
                 ass_node.span = token_iter.next().unwrap().get_span();
-                ass_node.value = ass_node.get_content(src);
                 parent_node.add_child(ass_node);
             } else {
                 token_iter.next();
             }
         } else {
-            add_error(parent_node, ErrorType::MissingAssignOp, "IllegalAssignmentSyntax:\nExpected AssignmentOperator ':=' at `identifier ->....<- exp`. Found: '".to_string() + get_tok_content(token_iter.peek().unwrap(), src) + "'\nSuggested Fix:\tAdd the missing ':=' keyword.");
+            add_error(parent_node, ErrorType::MissingAssignOp, "IllegalAssignmentSyntax:\nExpected AssignmentOperator ':=' at `identifier ->....<- exp`. Found: '".to_string() + get_tok_content(token_iter.peek().unwrap(), src) + "'\nSuggested Fix:\tAdd the missing ':=' operator.");
         }
     } else {
-        add_error(parent_node, ErrorType::UnexpectedEOF, "Unexpected EOF:\nExpected AssignmentOperator ':=' at `identifier ->....<- exp`, Found: Early EOF\nSuggested Fix:\tRemove the dangling identifier at the end of the statement sequence.".to_string());
+        add_error(parent_node, ErrorType::UnexpectedEOF, "Unexpected EOF:\nExpected AssignmentOperator ':=' at `identifier ->....<- exp`, Found: EOF\nSuggested Fix:\tRemove the dangling identifier at the end of the statement sequence.".to_string());
     }
 
     exp(token_iter, parent_node, src, simplified);
@@ -335,7 +318,7 @@ fn assign_stmt<'a>(
 
 fn read_stmt<'a>(
     token_iter: &mut Peekable<Box<Iter<Token>>>,
-    parent_node: &mut Node<'a>,
+    parent_node: &mut Node,
     src: &'a str,
     simplified: bool,
 ) {
@@ -343,7 +326,6 @@ fn read_stmt<'a>(
         let mut read_node = Node::new();
         read_node.n_type = NodeType::Keyword;
         read_node.span = token_iter.next().unwrap().get_span();
-        read_node.value = read_node.get_content(src);
         parent_node.add_child(read_node);
     } else {
         token_iter.next();
@@ -352,16 +334,23 @@ fn read_stmt<'a>(
         if let Token::IDENTIFIER(_) = token {
             identifier(token_iter, parent_node, src);
         } else {
-            //TODO: ExpectedIdentifier
+            add_error(
+                parent_node,
+                ErrorType::ExpectedIdentifier,
+                "IllegalReadSyntax:\nExpected an identifier at `read ->....<-`. Found: '"
+                    .to_string()
+                    + get_tok_content(token, src)
+                    + "'\nSuggested Fix:\tAdd the identifier that you want to save the value to.",
+            );
         }
     } else {
-        //TODO:UnexpectedEOF
+        add_error(parent_node, ErrorType::UnexpectedEOF, "Unexpected EOF:\nExpected an identifier at `read ->....<-`. Found: EOF\nSuggested Fix:\tRemove the dangling 'read' keyword.".to_string());
     }
 }
 
 fn write_stmt<'a>(
     token_iter: &mut Peekable<Box<Iter<Token>>>,
-    parent_node: &mut Node<'a>,
+    parent_node: &mut Node,
     src: &'a str,
     simplified: bool,
 ) {
@@ -369,7 +358,6 @@ fn write_stmt<'a>(
         let mut write_node = Node::new();
         write_node.n_type = NodeType::Keyword;
         write_node.span = token_iter.next().unwrap().get_span();
-        write_node.value = write_node.get_content(src);
         parent_node.add_child(write_node);
     } else {
         token_iter.next();
@@ -377,14 +365,13 @@ fn write_stmt<'a>(
     if let Some(_) = token_iter.peek() {
         exp(token_iter, parent_node, src, simplified);
     } else {
-        //TODO: UnexpectedEOF: Expected expression after the 'write' keyword
+        add_error(parent_node, ErrorType::UnexpectedEOF, "Unexpected EOF:\nExpected an expression at `write ->....<-`. Found: EOF\nSuggested Fix:\tRemove the dangling 'write' keyword.".to_string());
     }
 }
 
-//==============Start Of: Ops==============
 fn add_op<'a>(
     token_iter: &mut Peekable<Box<Iter<Token>>>,
-    parent_node: &mut Node<'a>,
+    parent_node: &mut Node,
     src: &'a str,
     simplified: bool,
 ) {
@@ -394,24 +381,20 @@ fn add_op<'a>(
                 let mut addop_node = Node::new();
                 addop_node.n_type = NodeType::Op(OpType::AddOp);
                 addop_node.span = token_iter.next().unwrap().get_span();
-                addop_node.value = addop_node.get_content(src);
                 parent_node.add_child(addop_node);
             } else {
                 parent_node.n_type = NodeType::Op(OpType::AddOp);
                 parent_node.span = token_iter.next().unwrap().get_span();
-                parent_node.value = parent_node.get_content(src);
             }
-        } else {
-            //TODO: MissingAddOperator
         }
     } else {
-        //TODO: UnexpectedEOF
+        add_error(parent_node, ErrorType::UnexpectedEOF, "Unexpected EOF:\nExpected AdditionOperator ( '+' , '-' ) at `term ->....<- term`. Found: EOF\nSuggested Fix:\tRemove the dangling term.".to_string());
     }
 }
 
 fn mulop<'a>(
     token_iter: &mut Peekable<Box<Iter<Token>>>,
-    parent_node: &mut Node<'a>,
+    parent_node: &mut Node,
     src: &'a str,
     simplified: bool,
 ) {
@@ -421,24 +404,20 @@ fn mulop<'a>(
                 let mut mulop_node = Node::new();
                 mulop_node.n_type = NodeType::Op(OpType::MulOp);
                 mulop_node.span = token_iter.next().unwrap().get_span();
-                mulop_node.value = mulop_node.get_content(src);
                 parent_node.add_child(mulop_node);
             } else {
                 parent_node.n_type = NodeType::Op(OpType::MulOp);
                 parent_node.span = token_iter.next().unwrap().get_span();
-                parent_node.value = parent_node.get_content(src);
             }
-        } else {
-            //TODO: MissingMulOperator
         }
     } else {
-        //TODO: UnexpectedEOF
+        add_error(parent_node, ErrorType::UnexpectedEOF, "Unexpected EOF:\nExpected MultiplicationOperator ( '*' , '/' ) at `factor ->....<- factor`. Found: EOF\nSuggested Fix:\tRemove the dangling factor.".to_string());
     }
 }
 
 fn comp_op<'a>(
     token_iter: &mut Peekable<Box<Iter<Token>>>,
-    parent_node: &mut Node<'a>,
+    parent_node: &mut Node,
     src: &'a str,
     simplified: bool,
 ) {
@@ -448,25 +427,20 @@ fn comp_op<'a>(
                 let mut compop_node = Node::new();
                 compop_node.n_type = NodeType::Op(OpType::CompOp);
                 compop_node.span = token_iter.next().unwrap().get_span();
-                compop_node.value = compop_node.get_content(src);
                 parent_node.add_child(compop_node);
             } else {
                 parent_node.n_type = NodeType::Op(OpType::CompOp);
                 parent_node.span = token_iter.next().unwrap().get_span();
-                parent_node.value = parent_node.get_content(src);
             }
-        } else {
-            //TODO: MissingCompOperator
         }
     } else {
-        //TODO: UnexpectedEOF
+        add_error(parent_node, ErrorType::UnexpectedEOF, "Unexpected EOF:\nExpected ComparisonOperator ( '<' , '=' ) at `simple_exp ->....<- simple_exp`. Found: EOF\nSuggested Fix:\tRemove the dangling simple_exp.".to_string());
     }
 }
-//==============End Of: Ops==============
 
 fn exp<'a>(
     token_iter: &mut Peekable<Box<Iter<Token>>>,
-    parent_node: &mut Node<'a>,
+    parent_node: &mut Node,
     src: &'a str,
     simplified: bool,
 ) {
@@ -478,7 +452,6 @@ fn exp<'a>(
     }
     simple_exp(token_iter, &mut exp_node, src, simplified);
 
-    //Optional part starts here
     loop {
         if match_tok(token_iter.peek(), "<", src) || match_tok(token_iter.peek(), "=", src) {
             opped = true;
@@ -489,9 +462,6 @@ fn exp<'a>(
         }
     }
 
-    if !simplified {
-        exp_node.value = exp_node.get_content(src);
-    }
     if !opped {
         parent_node.add_child(exp_node.reduce());
     } else {
@@ -501,7 +471,7 @@ fn exp<'a>(
 
 fn simple_exp<'a>(
     token_iter: &mut Peekable<Box<Iter<Token>>>,
-    parent_node: &mut Node<'a>,
+    parent_node: &mut Node,
     src: &'a str,
     simplified: bool,
 ) {
@@ -524,9 +494,6 @@ fn simple_exp<'a>(
         }
     }
 
-    if !simplified {
-        sexp_node.value = sexp_node.get_content(src);
-    }
     if !opped {
         parent_node.add_child(sexp_node.reduce());
     } else {
@@ -536,7 +503,7 @@ fn simple_exp<'a>(
 
 fn term<'a>(
     token_iter: &mut Peekable<Box<Iter<Token>>>,
-    parent_node: &mut Node<'a>,
+    parent_node: &mut Node,
     src: &'a str,
     simplified: bool,
 ) {
@@ -559,7 +526,7 @@ fn term<'a>(
         }
     }
     if !simplified {
-        term_node.value = term_node.get_content(src);
+//        term_node.value = term_node.get_content(src);
     }
     if !opped {
         parent_node.add_child(term_node.reduce());
@@ -570,7 +537,7 @@ fn term<'a>(
 
 fn factor<'a>(
     token_iter: &mut Peekable<Box<Iter<Token>>>,
-    parent_node: &mut Node<'a>,
+    parent_node: &mut Node,
     src: &'a str,
     simplified: bool,
 ) {
@@ -599,7 +566,6 @@ fn factor<'a>(
                         let mut open_brace_node = Node::new();
                         open_brace_node.n_type = NodeType::OpeningBrace;
                         open_brace_node.span = token_iter.next().unwrap().get_span();
-                        open_brace_node.value = open_brace_node.get_content(src);
                         factor_node.add_child(open_brace_node);
 
                         exp(token_iter, &mut factor_node, src, simplified);
@@ -607,55 +573,49 @@ fn factor<'a>(
                             let mut close_brace_node = Node::new();
                             close_brace_node.n_type = NodeType::ClosingBrace;
                             close_brace_node.span = token_iter.next().unwrap().get_span();
-                            close_brace_node.value = close_brace_node.get_content(src);
                             factor_node.add_child(close_brace_node);
                         } else {
-                            //TODO: MissingBracket
+                            add_error(parent_node, ErrorType::MissingClosingBracket, "MissingClosingBracket:\nExpression preceded by an opening bracket '(' but not followed by a closing one ')'.\n\tSuggested Fix: Add a closing bracket ')' at the end of the expression.".to_string());
                         }
                     } else {
                         exp(token_iter, parent_node, src, simplified);
                     }
                 } else {
-                    //TODO: IllegalFactor
+                    add_error(parent_node, ErrorType::IllegalFactor, "Illegal Factor: Expected one of {identifier, number, (expression)}, Found none of the above.".to_string());
                 }
             }
             _ => {
-                //TODO: IllegalFactor
+                add_error(parent_node, ErrorType::ExpectedFactor, "Illegal Factor: Expected one of {identifier, number, (expression)}, Found none of the above.".to_string());
             }
         }
     } else {
-        //TODO: UnexpectedEOF
+        add_error(parent_node, ErrorType::UnexpectedEOF, "Unexpected EOF:\nExpected a Factor { identifier , number, (exp) } at `simple_exp ->....<- simple_exp`, Found: EOF.".to_string());
     }
 
     if !simplified {
-        factor_node.value = factor_node.get_content(src);
         parent_node.add_child(factor_node);
     }
 }
 
 fn number<'a>(
     token_iter: &mut Peekable<Box<Iter<Token>>>,
-    parent_node: &mut Node<'a>,
+    parent_node: &mut Node,
     src: &'a str,
 ) {
-    //Doesn't need simplification
     let mut number_node = Node::new();
     number_node.n_type = NodeType::Number;
     number_node.span = token_iter.next().unwrap().get_span();
-    number_node.value = number_node.get_content(src);
     parent_node.add_child(number_node);
 }
 
 fn identifier<'a>(
     token_iter: &mut Peekable<Box<Iter<Token>>>,
-    parent_node: &mut Node<'a>,
+    parent_node: &mut Node,
     src: &'a str,
 ) {
-    //Doesn't need simplification
     let mut id_node = Node::new();
     id_node.n_type = NodeType::Identifier;
     id_node.span = token_iter.next().unwrap().get_span();
-    id_node.value = id_node.get_content(src);
     parent_node.add_child(id_node);
 }
 
