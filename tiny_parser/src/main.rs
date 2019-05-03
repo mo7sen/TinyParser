@@ -1,41 +1,40 @@
 mod lib;
-use json::number::Number;
 use json::JsonValue;
 use lib::parse;
+use std::fs;
+use std::path::Path;
+use std::str::FromStr;
 
 #[macro_use]
 extern crate json;
 
 fn main() {
-    let src = "read{super cool} x; {cool}
+    let args: Vec<String> = std::env::args().collect();
+    let mut in_path = Path::new(&args[1]);
+    let mut out_path = Path::new(&args[2]);
+    let simplified = match FromStr::from_str(&args[3]) {
+        Ok(n) => n,
+        _ => true
+    };
 
-            if 0 < x then
-
-            fact := 1{really};
-
-            repeat
-
-            fact := fact * x;
-
-            x := x - 1
-
-            until x = 0;
-
-            write fact
-
-            end ";
-
-    let simplified = true;
-
-    let root = parse(src, simplified);
-
-    let mut data = jsonify_node(root);
-    println!("{}", data);
+    let src = fs::read_to_string(in_path).expect("Incorrect + Path");
+    let mut root = parse(&src, simplified);
+    legacy_spacing(&mut root, 100, 50);
+    let mut output = "".to_string();
+    let data = jsonify_node(root);
+    output += &format!("{}", data);
+    fs::write(out_path, output);
 }
 
+use lib::NodeType;
 fn jsonify_node(node: lib::Node) -> JsonValue {
     let mut node_arr: Vec<JsonValue> = vec![];
     let mut nextnode_arr: Vec<JsonValue> = vec![];
+    let class = if let NodeType::Stmt(_) = node.n_type {
+        "stmt"
+    } else {
+        "normie"
+    }.to_string();
 
     for child in node.children {
         node_arr.push(jsonify_node(child));
@@ -44,10 +43,68 @@ fn jsonify_node(node: lib::Node) -> JsonValue {
         nextnode_arr.push(jsonify_node(child));
     }
 
+    let text = object!{
+        "type" => JsonValue::String(format!("{:?}", node.n_type)),
+    };
+
     object! {
+        //"text" => text,
         "type" => JsonValue::String(format!("{:?}", node.n_type)),
         "span" => array![node.span.0, node.span.1],
         "children" => JsonValue::Array(node_arr),
         "nextstmt" => JsonValue::Array(nextnode_arr),
+        "pos" => array![node.x, node.y],
+        "htmlclass"=> JsonValue::String(class),
+    }
+}
+
+fn jsonify_all(node: lib::Node, vec: &mut Vec<JsonValue>) {
+    let class = if let NodeType::Stmt(_) = node.n_type {
+        "stmt"
+    } else {
+        "normie"
+    }.to_string();
+
+    for child in node.children {
+        jsonify_all(child, vec);
+    }
+    for child in node.nextstmt {
+        jsonify_all(child, vec);
+    }
+
+    vec.push(object! {
+        //"text" => text,
+        "type" => JsonValue::String(format!("{:?}", node.n_type)),
+        "span" => array![node.span.0, node.span.1],
+        "pos" => array![node.x, node.y],
+        "htmlclass"=> JsonValue::String(class),
+    });
+}
+
+
+pub fn legacy_spacing(node: &mut lib::Node, sibling_hspacing: i32, sibling_vspacing: i32) {
+    let child_count = node.children.len() as i32;
+    let (curr_x, curr_y) = (node.x, node.y);
+    let mut starting_factor = child_count / -2;
+    for child in node.children.iter_mut() {
+        if starting_factor == 0 && child_count % 2 == 0 {
+            starting_factor += 1;
+        }
+        child.x = (curr_x + (starting_factor * sibling_hspacing));
+        if let NodeType::Stmt(_) = child.n_type {
+            child.y = (curr_y + (sibling_vspacing as f64 * 1.5) as i32);
+        } else {
+            child.y = (curr_y + sibling_vspacing);
+        }
+        starting_factor += 1;
+        legacy_spacing(child, (sibling_hspacing as f64 / (3 as f64 / 2 as f64)) as i32, sibling_vspacing);
+    }
+
+    for sib in node.nextstmt.iter_mut() {
+        sib.y = (curr_y);
+        sib.x = (curr_x + (6  * sibling_hspacing ));
+        legacy_spacing(sib,
+                        sibling_hspacing
+                       , sibling_vspacing);
     }
 }

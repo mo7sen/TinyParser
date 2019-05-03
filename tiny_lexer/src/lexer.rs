@@ -15,7 +15,6 @@ enum TokenType {
     SYMBOL,
 }
 
-//TODO: use crates.io/crates/shrinkwraprs
 #[derive(Debug)]
 pub enum Token {
     RESERVED(Span),

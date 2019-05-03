@@ -61,6 +61,8 @@ pub struct Node {
     pub n_type: NodeType,
     pub nextstmt: Vec<Node>,
     pub children: Vec<Node>,
+    pub x: i32,
+    pub y: i32,
 }
 
 impl<'a> Node {
@@ -70,10 +72,12 @@ impl<'a> Node {
             n_type: NodeType::Null,
             nextstmt: vec![],
             children: vec![],
+            x: 0,
+            y: 0,
         }
     }
 
-    fn set_nextstmt(&mut self, next: Node){
+    fn set_nextstmt(&mut self, next: Node) {
         self.nextstmt.push(next);
     }
 
@@ -526,7 +530,7 @@ fn term<'a>(
         }
     }
     if !simplified {
-//        term_node.value = term_node.get_content(src);
+        //        term_node.value = term_node.get_content(src);
     }
     if !opped {
         parent_node.add_child(term_node.reduce());
@@ -597,11 +601,7 @@ fn factor<'a>(
     }
 }
 
-fn number<'a>(
-    token_iter: &mut Peekable<Box<Iter<Token>>>,
-    parent_node: &mut Node,
-    src: &'a str,
-) {
+fn number<'a>(token_iter: &mut Peekable<Box<Iter<Token>>>, parent_node: &mut Node, src: &'a str) {
     let mut number_node = Node::new();
     number_node.n_type = NodeType::Number;
     number_node.span = token_iter.next().unwrap().get_span();
