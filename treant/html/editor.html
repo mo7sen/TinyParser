@@ -8,10 +8,10 @@
 </head>
 <body>
 <ul>
-    <li><a href="/tree" onclick="syntax=true;ahShiet();">Ah,shit </a></li>
-    <li><a href="/tree" onclick="syntax=false;ahShiet();">Here </a></li>
-    <li><a href="#"onclick="haqar();">we go</a></li>
-    <li><a href=""> again </a></li>
+    <li class="button"><a class="buttona" href="/tree" onclick="syntax=true;ahShiet();">Ah,shit </a></li>
+    <li class="button"><a class="buttona" href="/tree" onclick="syntax=false;ahShiet();">Here </a></li>
+    <li class="button"><a class="buttona" href="#"onclick="haqar();">we go</a></li>
+    <li id="niggaButton" > <a href="/tree" onclick="nigger=true;console.log('niggas incoming');"> <img src="/stuff/nigga.png" width="40px" height="40px"  ></a></li>
 </ul>
 <ul class="idkBar"><li class="fillerBoi"></li></ul>
 <div id="editor">read{super cool} x; {cool}
@@ -31,13 +31,13 @@
     editor.setTheme("ace/theme/dracula");
     editor.session.setMode("ace/mode/ruby"); //It's not really ruby I edited the file
     var syntax = true;
-    
+    var nigger = false;
     function ahShiet(){
         var data = editor.getValue();
         $.ajax({
             url: 'http://localhost:3000/saveFile',
             type: 'POST',
-            data: JSON.stringify({'text':data,'syntax':syntax}),
+            data: JSON.stringify({'text':data,'syntax':syntax,'nigger':nigger}),
             contentType: 'application/json; charset=utf-8',
             dataType: 'json',
             async: false,
@@ -51,6 +51,7 @@
     function haqar(){
         editor.setTheme("ace/theme/terminal");
     }
+    
 </script>
 </body>
 </html>

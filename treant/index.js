@@ -21,13 +21,18 @@ app.get('/',function(request,response){
 app.post('/saveFile',function(request,response){
     var data = request.body.text;
     var syntax = request.body.syntax;
+    var nigger = request.body.nigger;
     console.log(data);
     fs.writeFile('thisCode.tiny',data,(err)=>{
         if(err) throw err;
-        if(syntax){
-            runTehParsah(true);
+        if(nigger){
+            tisNiggas();
         }else{
-            runTehParsah(false);
+            if(syntax){
+                runTehParsah(true);
+            }else{
+                runTehParsah(false);
+            }
         }
         response.redirect('/tree');
     });
@@ -57,6 +62,13 @@ function runTehParsah(nigger){
             shell.exec('tiny_parser.exe thisCode.tiny json.json false')
 
         }
+    }
+}
+
+function tisNiggas(){
+    if(os.platform=="win32"){
+        shell.exec('tiny_parser.exe thisCode.tiny json.json false nigger')
+
     }
 }
 console.log("Listening");

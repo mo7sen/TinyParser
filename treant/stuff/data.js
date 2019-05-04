@@ -12,17 +12,20 @@ simple_chart_config = {
   chart: {
     container: "#tree-simple",
     // hideRootNode: true,
+    animateOnInit : true,
+    //scrollbar : fancy,
     connectors: {
       type: "bCurve"
     },
     node: {
-      collapsable: true
+      collapsable: true,
+      //collapsed : true
     },
     animation: {
       nodeAnimation: "easeInOutSine",
-      nodeSpeed: 600,
+      nodeSpeed: 1000,
       connectorsAnimation: "easeInOutSine",
-      connectorsSpeed: 300
+      connectorsSpeed: 500
     }
   },
   nodeStructure: datajson

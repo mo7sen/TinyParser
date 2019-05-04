@@ -42,3 +42,19 @@
   font-family: Tahoma;
   font-size: 10px;
   text-align: center;}
+
+  .nigger{
+    text-align: center;
+    line-height: 70px;
+    -webkit-border-radius: 50%;
+    -moz-border-radius: 50%;
+    background-image: url("/stuff/nigga.png");
+    background-size: 75px 75px;
+    /*border: 1px solid #000;*/
+    width: 75px;
+    height: 75px;
+    font-family: Tahoma;
+    font-size: 11px;
+    color: white;
+    text-align: center;
+  }
