@@ -1,9 +1,9 @@
 var datajson ;
 
 $.getJSON("http://localhost:3000/tree/get",function( data ) {
-    console.log(data);   
+    //console.log(data);   
     datajson = data;
-    console.log(datajson);
+    //console.log(datajson);
     do_dat_shit();
   });
 

@@ -11,7 +11,7 @@
     <li class="button"><a class="buttona" href="/tree" onclick="syntax=true;ahShiet();">Ah,shit </a></li>
     <li class="button"><a class="buttona" href="/tree" onclick="syntax=false;ahShiet();">Here </a></li>
     <li class="button"><a class="buttona" href="#"onclick="haqar();">we go</a></li>
-    <li id="niggaButton" > <a href="/tree" onclick="nigger=true;console.log('niggas incoming');"> <img src="/stuff/nigga.png" width="40px" height="40px"  ></a></li>
+    <li id="niggaButton" > <a href="/tree" onclick="nigger=true;ahShiet();"> <img src="/stuff/nigga.png" width="40px" height="40px"  ></a></li>
 </ul>
 <ul class="idkBar"><li class="fillerBoi"></li></ul>
 <div id="editor">read{super cool} x; {cool}
@@ -27,11 +27,12 @@
     
 <script src="/ace/src/ace.js" type="text/javascript" charset="utf-8"></script>
 <script>
+        var syntax = true;
+    var nigger = false;
     var editor = ace.edit("editor");
     editor.setTheme("ace/theme/dracula");
     editor.session.setMode("ace/mode/ruby"); //It's not really ruby I edited the file
-    var syntax = true;
-    var nigger = false;
+
     function ahShiet(){
         var data = editor.getValue();
         $.ajax({
@@ -43,7 +44,7 @@
             async: false,
             success: function(msg) {
                 //alert(msg);
-                console.log(msg);
+                //console.log(msg);
             }
         });
     }

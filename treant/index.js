@@ -22,11 +22,13 @@ app.post('/saveFile',function(request,response){
     var data = request.body.text;
     var syntax = request.body.syntax;
     var nigger = request.body.nigger;
-    console.log(data);
+    console.log(syntax + " " + nigger);
     fs.writeFile('thisCode.tiny',data,(err)=>{
         if(err) throw err;
         if(nigger){
+            console.log("NIGGAS CUMIN");
             tisNiggas();
+            //response.redirect('/tree');
         }else{
             if(syntax){
                 runTehParsah(true);
@@ -46,7 +48,7 @@ app.get('/tree/get',function(request,response){
     fs.readFile('./json.json', (err, data) => {  
         if (err) throw err;
         let student = JSON.parse(data);
-        console.log( student);
+        //console.log( student);
         response.send(student);
     });
 });
@@ -54,21 +56,21 @@ app.get('/tree/get',function(request,response){
 function runTehParsah(nigger){
     if(nigger){
         if(os.platform=="win32"){
-            shell.exec('tiny_parser.exe thisCode.tiny json.json true')
-
+            shell.exec('tiny_parser.exe thisCode.tiny json.json true');
+            console.log("syntax tree");
         }
     }else{
         if(os.platform=="win32"){
-            shell.exec('tiny_parser.exe thisCode.tiny json.json false')
-
+            shell.exec('tiny_parser.exe thisCode.tiny json.json false');
+            console.log("parse tree");
         }
     }
 }
 
 function tisNiggas(){
     if(os.platform=="win32"){
-        shell.exec('tiny_parser.exe thisCode.tiny json.json false nigger')
-
+        shell.exec('tiny_parser.exe thisCode.tiny json.json false nigger');
+        console.log("niggas tree");
     }
 }
 console.log("Listening");
