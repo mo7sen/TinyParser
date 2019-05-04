@@ -26,11 +26,11 @@ pub enum NodeType {
 
 #[derive(Debug, Clone)]
 pub enum StmtType {
-    IfStmt,
-    RepeatStmt,
-    WriteStmt,
-    ReadStmt,
-    AssignStmt,
+    If,
+    Repeat,
+    Write,
+    Read,
+    Assign,
     Illegal,
 }
 
@@ -55,14 +55,12 @@ pub enum ErrorType {
     ExpectedIdentifier,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Node {
     pub span: Span,
+    pub value: String,
     pub n_type: NodeType,
-    pub nextstmt: Vec<Node>,
     pub children: Vec<Node>,
-    pub x: i32,
-    pub y: i32,
 }
 
 impl<'a> Node {
@@ -70,25 +68,44 @@ impl<'a> Node {
         Node {
             span: (usize::MAX, 0),
             n_type: NodeType::Null,
-            nextstmt: vec![],
+            value: "".to_string(),
             children: vec![],
-            x: 0,
-            y: 0,
         }
     }
 
-    fn set_nextstmt(&mut self, next: Node) {
-        self.nextstmt.push(next);
-    }
-
     fn add_child(&mut self, child: Node) {
-        self.span.0 = min(self.span.0, child.span.0);
-        self.span.1 = max(self.span.1, child.span.1);
+//        self.span.0 = min(self.span.0, child.span.0);
+//        self.span.1 = max(self.span.1, child.span.1);
         self.children.push(child);
     }
 
-    fn reduce(&self) -> Node {
-        self.children.get(0).unwrap().clone()
+    fn reduce(&mut self) -> Node {
+        self.children.remove(0)
+    }
+
+    pub fn get_content(&mut self, src: &str) {
+        self.value = match &self.n_type {
+            NodeType::Program => {"Program".to_string()},
+            NodeType::StmtSeq => {"StmtSeq".to_string()},
+            NodeType::Stmt(x) => {format!("{:?}",x)},
+            NodeType::Op(_) => {(&src[self.span.0..self.span.1]).to_string()},
+            NodeType::Term => {"Term".to_string()},
+            NodeType::Factor => {"Factor".to_string()},
+            NodeType::Exp => {"Exp".to_string()},
+            NodeType::SimplExp => {"SimpleExp".to_string()},
+            NodeType::Identifier => {(&src[self.span.0..self.span.1]).to_string()},
+            NodeType::Number => {(&src[self.span.0..self.span.1]).to_string()},
+            NodeType::Keyword => {"Keyword".to_string()},
+            NodeType::Error(e, _) => {format!("{:?}", e)},
+            NodeType::Null => {"".to_string()},
+            NodeType::OpeningBrace => {"{".to_string()},
+            NodeType::ClosingBrace => {"}".to_string()},
+            NodeType::Symbol => {":=".to_string()},
+        };
+
+        for child in self.children.iter_mut() {
+            child.get_content(src);
+        }
     }
 }
 
@@ -96,7 +113,11 @@ pub fn parse(src: &str, simplified: bool) -> Node {
     let tokens: Vec<Token> = tokenize(src, false);
     let mut token_iter = Box::new(tokens.iter()).peekable();
     let mut program_node = Node::new();
-    program_node.n_type = NodeType::Program;
+    if simplified{
+        program_node.n_type = NodeType::Null;
+    } else {
+        program_node.n_type = NodeType::Program;
+    }
     stmt_seq(&mut token_iter, &mut program_node, src, simplified);
     program_node
 }
@@ -108,32 +129,21 @@ fn stmt_seq<'a>(
     simplified: bool,
 ) {
     let mut stmt_seq_node = Node::new();
-    stmt_seq_node.n_type = NodeType::StmtSeq;
-    let mut next_parent_node = parent_node;
-
-    if simplified {
-        stmt(token_iter, next_parent_node, src, simplified, true);
-        next_parent_node = next_parent_node.children.last_mut().unwrap();
-    } else {
-        stmt(token_iter, &mut stmt_seq_node, src, simplified, true);
+    if !simplified {
+        stmt_seq_node.n_type = NodeType::StmtSeq;
     }
+
+    stmt(token_iter, &mut stmt_seq_node, src, simplified);
 
     loop {
         if match_tok(token_iter.peek(), ";", src) {
             token_iter.next();
-            if simplified {
-                stmt(token_iter, next_parent_node, src, simplified, false);
-                next_parent_node = next_parent_node.nextstmt.last_mut().unwrap();
-            } else {
-                stmt(token_iter, &mut stmt_seq_node, src, simplified, true);
-            }
+            stmt(token_iter, &mut stmt_seq_node, src, simplified);
         } else {
-            if !simplified {
-                next_parent_node.add_child(stmt_seq_node);
-            }
             break;
         }
     }
+     parent_node.add_child(stmt_seq_node);
 }
 
 fn stmt<'a>(
@@ -141,7 +151,6 @@ fn stmt<'a>(
     parent_node: &mut Node,
     src: &'a str,
     simplified: bool,
-    child: bool,
 ) {
     let mut stmt_node = Node::new();
     let mut err = false;
@@ -149,24 +158,24 @@ fn stmt<'a>(
         let mut stmt_type = StmtType::Illegal;
         match get_tok_content(token, src) {
             "if" => {
-                stmt_type = StmtType::IfStmt;
+                stmt_type = StmtType::If;
                 if_stmt(token_iter, &mut stmt_node, src, simplified);
             }
             "repeat" => {
-                stmt_type = StmtType::RepeatStmt;
+                stmt_type = StmtType::Repeat;
                 repeat_stmt(token_iter, &mut stmt_node, src, simplified);
             }
             "read" => {
-                stmt_type = StmtType::ReadStmt;
+                stmt_type = StmtType::Read;
                 read_stmt(token_iter, &mut stmt_node, src, simplified);
             }
             "write" => {
-                stmt_type = StmtType::WriteStmt;
+                stmt_type = StmtType::Write;
                 write_stmt(token_iter, &mut stmt_node, src, simplified);
             }
             _ => {
                 if let Token::IDENTIFIER(_) = token {
-                    stmt_type = StmtType::AssignStmt;
+                    stmt_type = StmtType::Assign;
                     assign_stmt(token_iter, &mut stmt_node, src, simplified);
                 } else {
                     err = true;
@@ -176,11 +185,7 @@ fn stmt<'a>(
         }
         if !err {
             stmt_node.n_type = NodeType::Stmt(stmt_type);
-            if !child {
-                parent_node.set_nextstmt(stmt_node);
-            } else {
-                parent_node.add_child(stmt_node);
-            }
+            parent_node.add_child(stmt_node);
         }
     } else {
         add_error(parent_node, ErrorType::IllegalStmt, "Illegal Statement Error:\nSuggested Fix:\tCheck if you have a semicolon(';') after your last statement.".to_string());
