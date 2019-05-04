@@ -8,12 +8,12 @@
 </head>
 <body>
 <ul>
-    <li><a href="/tree" onclick="ahShiet();">Ah,shit </a></li>
-    <li><a href="">Here </a></li>
+    <li><a href="/tree" onclick="syntax=true;ahShiet();">Ah,shit </a></li>
+    <li><a href="/tree" onclick="syntax=false;ahShiet();">Here </a></li>
     <li><a href="">we go</a></li>
     <li><a href=""> again </a></li>
 </ul>
-
+<ul class="idkBar"><li class="fillerBoi"></li></ul>
 <div id="editor">read{super cool} x; {cool}
         if 0 < x then
         fact := 1{really};
@@ -29,19 +29,21 @@
 <script>
     var editor = ace.edit("editor");
     editor.setTheme("ace/theme/dracula");
-    editor.session.setMode("ace/mode/javascript");
-
+    editor.session.setMode("ace/mode/ruby"); //It's not really ruby I edited the file
+    var syntax = true;
+    
     function ahShiet(){
         var data = editor.getValue();
         $.ajax({
             url: 'http://localhost:3000/saveFile',
             type: 'POST',
-            data: JSON.stringify({'text':data}),
+            data: JSON.stringify({'text':data,'syntax':syntax}),
             contentType: 'application/json; charset=utf-8',
             dataType: 'json',
             async: false,
             success: function(msg) {
-                alert(msg);
+                //alert(msg);
+                console.log(msg);
             }
         });
     }

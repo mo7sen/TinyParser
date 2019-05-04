@@ -151,6 +151,7 @@ var supportedModes = {
     RHTML:       ["Rhtml"],
     RST:         ["rst"],
     Ruby:        ["rb|ru|gemspec|rake|^Guardfile|^Rakefile|^Gemfile"],
+    Tiny:        ["tiny"],
     Rust:        ["rs"],
     SASS:        ["sass"],
     SCAD:        ["scad"],

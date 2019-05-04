@@ -70,13 +70,13 @@ var RubyHighlightRules = function() {
         "filter_parameter_logging|match|get|post|resources|redirect|scope|assert_routing|" +
         "translate|localize|extract_locale_from_tld|caches_page|expire_page|caches_action|expire_action|" +
         "cache|expire_fragment|expire_cache_for|observe|cache_sweeper|" +
-        "has_many|has_one|belongs_to|has_and_belongs_to_many"
+        "has_many|has_one|belongs_to|has_and_belongs_to_many|read|write"
     );
 
     var keywords = (
         "alias|and|BEGIN|begin|break|case|class|def|defined|do|else|elsif|END|end|ensure|" +
         "__FILE__|finally|for|gem|if|in|__LINE__|module|next|not|or|private|protected|public|" +
-        "redo|rescue|retry|return|super|then|undef|unless|until|when|while|yield"
+        "redo|repeat|rescue|retry|return|super|then|undef|unless|until|when|while|yield"
     );
 
     var buildinConstants = (
@@ -260,14 +260,14 @@ var RubyHighlightRules = function() {
                regex : "\\B\\?."
             }, {
                 token : "keyword.operator",
-                regex : "!|\\$|%|&|\\*|\\-\\-|\\-|\\+\\+|\\+|~|===|==|=|!=|!==|<=|>=|<<=|>>=|>>>=|<>|<|>|!|&&|\\|\\||\\?\\:|\\*=|%=|\\+=|\\-=|&=|\\^=|\\b(?:in|instanceof|new|delete|typeof|void)"
-            }, {
+                regex : "!|\\$|%|&|\\*|\\-\\-|\\-|\\+\\+|\\+|:=|~|===|==|=|!=|!==|<=|>=|<<=|>>=|>>>=|<>|<|>|!|&&|\\|\\||\\?\\:|\\*=|%=|\\+=|\\-=|&=|\\^=|\\b(?:in|instanceof|new|delete|typeof|void)"
+            }, /* {
                 token : "paren.lparen",
                 regex : "[[({]"
             }, {
                 token : "paren.rparen",
                 regex : "[\\])}]"
-            }, {
+            },  */{
                 token : "text",
                 regex : "\\s+"
             }
@@ -275,7 +275,7 @@ var RubyHighlightRules = function() {
         "comment" : [
             {
                 token : "comment", // closing comment
-                regex : "^=end(?:$|\\s.*$)",
+                regex : "\{(.*?)\}",
                 next : "start"
             }, {
                 token : "comment", // comment spanning whole line

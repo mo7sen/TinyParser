@@ -28,6 +28,6 @@ simple_chart_config = {
   nodeStructure: datajson
 };
 new Treant(simple_chart_config, function() {
-  alert("Tree Loaded");
+  //alert("Tree Loaded");
 });
 }

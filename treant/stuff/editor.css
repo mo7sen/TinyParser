@@ -1,6 +1,6 @@
 #editor { 
     position: fixed;
-    top: 46px;
+    top: 50px;
     right: 0;
     bottom: 0;
     left: 0;
@@ -19,6 +19,9 @@ width: 100%;
 
 li {
 float: left;
+border-left-color: #191b29;
+border-left-width: 0.1px;
+border-left-style: ridge;
 }
 
 li a {
@@ -35,4 +38,23 @@ background-color: #111;
 
 .active {
 background-color: #4CAF50;
+}
+
+.idkBar{
+    list-style-type: none;
+margin: 0;
+padding: 0;
+overflow: hidden;
+background-color: #191b29;
+position: fixed;
+top: 46px;
+left : 0;
+width: 100%;
+}
+.fillerBoi{
+    display: block;
+color: #0d0f1f;
+text-align: center;
+padding: 2px 2px;
+text-decoration: none;
 }

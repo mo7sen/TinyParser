@@ -20,10 +20,15 @@ app.get('/',function(request,response){
 
 app.post('/saveFile',function(request,response){
     var data = request.body.text;
+    var syntax = request.body.syntax;
     console.log(data);
     fs.writeFile('thisCode.tiny',data,(err)=>{
         if(err) throw err;
-        runTehParsah();
+        if(syntax){
+            runTehParsah(true);
+        }else{
+            runTehParsah(false);
+        }
         response.redirect('/tree');
     });
 });
@@ -41,11 +46,17 @@ app.get('/tree/get',function(request,response){
     });
 });
 
-function runTehParsah(){
+function runTehParsah(nigger){
+    if(nigger){
+        if(os.platform=="win32"){
+            shell.exec('tiny_parser.exe thisCode.tiny json.json true')
 
-    if(os.platform=="win32"){
-        shell.exec('tiny_parser.exe thisCode.tiny json.json true')
+        }
+    }else{
+        if(os.platform=="win32"){
+            shell.exec('tiny_parser.exe thisCode.tiny json.json false')
 
+        }
     }
 }
 console.log("Listening");
