@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title></title>
+
+    <link rel="stylesheet" href="Treant.css" type="text/css" />
+  </head>
+  <body>
+    <div id="tree-simple"></div>
+    <style>
+      .normie {
+        text-align: center;
+        line-height: 70px;
+        -webkit-border-radius: 50%;
+        -moz-border-radius: 50%;
+        border-radius: 50%;
+        background-color: #fff;
+        border: 1px solid #000;
+        width: 100px;
+        height: 100px;
+        font-family: Tahoma;
+        font-size: 14px;
+      }
+
+      .stmt {
+        padding: 10px;
+        background-color: #fff;
+        border: 3px solid #000;
+        width: 100px;
+        font-family: Tahoma;
+        font-size: 12px;
+        text-align: center;
+      }
+    </style>
+    <script src="vendor/raphael.js"></script>
+    <script src="Treant.js"></script>
+    <script src="data.js"></script>
+    <script>
+      simple_chart_config = {
+        chart: {
+          container: "#tree-simple",
+          // hideRootNode: true,
+          connectors: {
+            type: "bCurve"
+          },
+          node: {
+            collapsable: true
+          },
+          animation: {
+            nodeAnimation: "easeInOutSine",
+            nodeSpeed: 600,
+            connectorsAnimation: "easeInOutSine",
+            connectorsSpeed: 300
+          }
+        },
+        nodeStructure: datajson
+      };
+    </script>
+
+    <script>
+      new Treant(simple_chart_config, function() {
+        alert("Tree Loaded");
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>ACE in Action</title>
+<link rel="stylesheet" href="/stuff/editor.css" type="text/css" />
+<script src="/stuff/jquery.js"></script>
+
+</head>
+<body>
+<ul>
+    <li><a href="/tree" onclick="ahShiet();">Ah,shit </a></li>
+    <li><a href="">Here </a></li>
+    <li><a href="">we go</a></li>
+    <li><a href=""> again </a></li>
+</ul>
+
+<div id="editor">read{super cool} x; {cool}
+        if 0 < x then
+        fact := 1{really};
+        repeat
+        fact := fact * x;
+        x := x - 1
+        until x = 0;
+        write fact
+        end
+}</div>
+    
+<script src="/ace/src/ace.js" type="text/javascript" charset="utf-8"></script>
+<script>
+    var editor = ace.edit("editor");
+    editor.setTheme("ace/theme/dracula");
+    editor.session.setMode("ace/mode/javascript");
+
+    function ahShiet(){
+        var data = editor.getValue();
+        $.ajax({
+            url: 'http://localhost:3000/saveFile',
+            type: 'POST',
+            data: JSON.stringify({'text':data}),
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            async: false,
+            success: function(msg) {
+                alert(msg);
+            }
+        });
+    }
+</script>
+</body>
+</html>
