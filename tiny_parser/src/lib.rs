@@ -74,8 +74,8 @@ impl<'a> Node {
     }
 
     fn add_child(&mut self, child: Node) {
-//        self.span.0 = min(self.span.0, child.span.0);
-//        self.span.1 = max(self.span.1, child.span.1);
+        //        self.span.0 = min(self.span.0, child.span.0);
+        //        self.span.1 = max(self.span.1, child.span.1);
         self.children.push(child);
     }
 
@@ -85,22 +85,22 @@ impl<'a> Node {
 
     pub fn get_content(&mut self, src: &str) {
         self.value = match &self.n_type {
-            NodeType::Program => {"Program".to_string()},
-            NodeType::StmtSeq => {"StmtSeq".to_string()},
-            NodeType::Stmt(x) => {format!("{:?}",x)},
-            NodeType::Op(_) => {(&src[self.span.0..self.span.1]).to_string()},
-            NodeType::Term => {"Term".to_string()},
-            NodeType::Factor => {"Factor".to_string()},
-            NodeType::Exp => {"Exp".to_string()},
-            NodeType::SimplExp => {"SimpleExp".to_string()},
-            NodeType::Identifier => {(&src[self.span.0..self.span.1]).to_string()},
-            NodeType::Number => {(&src[self.span.0..self.span.1]).to_string()},
-            NodeType::Keyword => {"Keyword".to_string()},
-            NodeType::Error(e, _) => {format!("{:?}", e)},
-            NodeType::Null => {"".to_string()},
-            NodeType::OpeningBrace => {"{".to_string()},
-            NodeType::ClosingBrace => {"}".to_string()},
-            NodeType::Symbol => {":=".to_string()},
+            NodeType::Program => "Program".to_string(),
+            NodeType::StmtSeq => "StmtSeq".to_string(),
+            NodeType::Stmt(x) => format!("{:?}", x),
+            NodeType::Op(_) => (&src[self.span.0..self.span.1]).to_string(),
+            NodeType::Term => "Term".to_string(),
+            NodeType::Factor => "Factor".to_string(),
+            NodeType::Exp => "Exp".to_string(),
+            NodeType::SimplExp => "SimpleExp".to_string(),
+            NodeType::Identifier => (&src[self.span.0..self.span.1]).to_string(),
+            NodeType::Number => (&src[self.span.0..self.span.1]).to_string(),
+            NodeType::Keyword => "Keyword".to_string(),
+            NodeType::Error(e, _) => format!("{:?}", e),
+            NodeType::Null => "".to_string(),
+            NodeType::OpeningBrace => "{".to_string(),
+            NodeType::ClosingBrace => "}".to_string(),
+            NodeType::Symbol => ":=".to_string(),
         };
 
         for child in self.children.iter_mut() {
@@ -113,7 +113,7 @@ pub fn parse(src: &str, simplified: bool) -> Node {
     let tokens: Vec<Token> = tokenize(src, false);
     let mut token_iter = Box::new(tokens.iter()).peekable();
     let mut program_node = Node::new();
-    if simplified{
+    if simplified {
         program_node.n_type = NodeType::Null;
     } else {
         program_node.n_type = NodeType::Program;
@@ -143,7 +143,7 @@ fn stmt_seq<'a>(
             break;
         }
     }
-     parent_node.add_child(stmt_seq_node);
+    parent_node.add_child(stmt_seq_node);
 }
 
 fn stmt<'a>(

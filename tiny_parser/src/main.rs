@@ -14,8 +14,14 @@ fn main() {
     let mut out_path = Path::new(&args[2]);
     let simplified = match FromStr::from_str(&args[3]) {
         Ok(n) => n,
-        _ => true
+        _ => true,
     };
+    let mut nigga = false;
+    if args.len() > 4 {
+        if &args[4] == "nigger" {
+            nigga = true;
+        }
+    }
 
     let src = fs::read_to_string(in_path).expect("Incorrect + Path");
     let mut root = parse(&src, simplified);
@@ -24,42 +30,44 @@ fn main() {
         root = root.children.remove(0);
     }
 
-    let data = jsonify_node(root, simplified);
+    let data = jsonify_node(root, simplified, nigga);
     fs::write(out_path, format!("{}", data));
 }
 
 use lib::NodeType;
 
-fn jsonify_node(node: lib::Node, simplified: bool) -> JsonValue {
+fn jsonify_node(node: lib::Node, simplified: bool, nigga: bool) -> JsonValue {
     let mut node_arr: Vec<JsonValue> = vec![];
-    let class = if let NodeType::Stmt(_) = node.n_type {
+    let class = if nigga {
+        "nigger"
+    } else if let NodeType::Stmt(_) = node.n_type {
         "stmt"
-    } else if let NodeType::Error(_,_) = node.n_type {
+    } else if let NodeType::Error(_, _) = node.n_type {
         "error"
     } else {
         "normie"
-    }.to_string();
+    }
+    .to_string();
 
     for child in node.children {
-        node_arr.push(jsonify_node(child, simplified));
+        node_arr.push(jsonify_node(child, simplified, nigga));
     }
 
     let typ = node.n_type.clone();
 
-    let text =
-        if simplified {
-            object!{
-                "value" => JsonValue::String(node.value),
-            }
-        } else {
-            object!{
-                "type" => JsonValue::String(
-                match node.n_type {
-                    NodeType::Error(e,_) => format!("{:?}", e),
-                    _ => format!("{:?}", node.n_type)
-                })
-            }
-        };
+    let text = if simplified {
+        object! {
+            "value" => JsonValue::String(node.value),
+        }
+    } else {
+        object! {
+            "type" => JsonValue::String(
+            match node.n_type {
+                NodeType::Error(e,_) => format!("{:?}", e),
+                _ => format!("{:?}", node.n_type)
+            })
+        }
+    };
 
     object! {
         "text" => text,
